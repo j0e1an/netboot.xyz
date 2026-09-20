@@ -1,11 +1,7 @@
 ---
-# Convenience compose from the menus repo — builds the full webapp stack
-# (Windows ISO download + TFTP + nginx) from ../webapp.
-#
-#   cd netboot.xyz
-#   docker compose up -d --build
-#
-# Or build directly in ../webapp (preferred).
+# Convenience wrapper: build/run the full stack from the sibling webapp repo.
+# On the Docker host prefer:
+#   cd ~/webapp && docker compose -f docker-compose.server.yml up -d --build
 
 services:
   netbootxyz:
@@ -15,8 +11,8 @@ services:
     image: netbootxyz-webapp:local
     container_name: netbootxyz
     environment:
-      PUID: ${PUID:-1000}
-      PGID: ${PGID:-1000}
+      PUID: "911"
+      PGID: "911"
       NGINX_PORT: "80"
       WEB_APP_PORT: "3000"
       BOOT_DOMAIN: "${BOOT_DOMAIN:-192.168.1.50:8080}"
