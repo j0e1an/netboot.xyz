@@ -1,43 +1,32 @@
 ---
-# Build & run netboot.xyz from THIS repo with bootloaders at TFTP root.
+# Convenience compose from the menus repo — builds the full webapp stack
+# (Windows ISO download + TFTP + nginx) from ../webapp.
 #
-# On joe-virtual-machine (example):
-#   cd /home/joe/src/netboot.xyz   # synced copy of this repo
+#   cd netboot.xyz
 #   docker compose up -d --build
 #
-# UniFi Network Boot:
-#   Server: 192.168.1.50
-#   File:   netboot.xyz.efi   (UEFI) or netboot.xyz.kpxe (BIOS)
+# Or build directly in ../webapp (preferred).
 
 services:
   netbootxyz:
     build:
-      context: .
+      context: ../webapp
       dockerfile: Dockerfile
-      target: runtime
-      args:
-        # HTTP host:port clients use after iPXE loads (nginx in this container)
-        BOOT_DOMAIN: "${BOOT_DOMAIN:-192.168.1.50:8080}"
-        NBXYZ_OVERRIDES: "${NBXYZ_OVERRIDES:-default}"
-    image: netbootxyz:local
+    image: netbootxyz-webapp:local
     container_name: netbootxyz
     environment:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
-      NGINX_PORT: 80
-      # Can override boot.cfg at start without rebuilding bootloaders
+      NGINX_PORT: "80"
+      WEB_APP_PORT: "3000"
       BOOT_DOMAIN: "${BOOT_DOMAIN:-192.168.1.50:8080}"
+      WINDOWS_ASSETS_URL: "http://${BOOT_DOMAIN:-192.168.1.50:8080}"
+      WINDOWS_PORTAL_URL: "http://${BOOT_DOMAIN:-192.168.1.50:8080}"
     volumes:
-      - netbootxyz-config:/config
-      - netbootxyz-assets:/assets
+      - ${NETBOOT_CONFIG:-../webapp/data/config}:/config
+      - ${NETBOOT_ASSETS:-../webapp/data/assets}:/assets
     ports:
-      - "3000:3000"   # unused by runtime image (no webapp); kept for compatibility
+      - "3000:3000"
       - "69:69/udp"
       - "8080:80"
-    # Use host networking if you need TFTP on all NICs (ens160 + ens192) without NAT
-    # network_mode: host
     restart: unless-stopped
-
-volumes:
-  netbootxyz-config:
-  netbootxyz-assets:

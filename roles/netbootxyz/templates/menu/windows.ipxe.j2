@@ -11,6 +11,7 @@ set os Microsoft Windows
 clear win_version
 menu ${os} 
 item --gap Installers
+item win_managed ${space} Managed Windows ISOs...
 item win_install ${space} Load ${os} Installer...
 item --gap Options:
 item arch_set ${space} Architecture [ ${win_arch} ]
@@ -37,6 +38,10 @@ echo ${win_base_url}/${win_arch}/sources/boot.wim
 echo
 prompt Press any key to return to Windows Menu...
 goto windows
+
+:win_managed
+# Webapp proxies this path and can start/host ISO downloads for PXE install
+chain http://${boot_domain}/ipxe/windows/menu.ipxe || chain windows-isos.ipxe || echo No managed Windows ISOs found && prompt && goto windows
 
 :win_install
 isset ${win_base_url} && goto boot || echo URL not set... && goto url_set
