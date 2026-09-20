@@ -67,15 +67,16 @@ if [[ -f "${TFTP_ROOT}/boot.cfg" ]]; then
 fi
 
 # iPXE EFI always requests autoexec.ipxe beside the NBP
+# HTTP-only menu chain once autoexec is loaded (avoids a second flaky TFTP get)
+# Skip dhcp — re-DHCP under VMware UEFI can trigger firmware exceptions.
 echo "[entrypoint] writing autoexec.ipxe -> ${BOOT_DOMAIN_VALUE}"
 cat > "${TFTP_ROOT}/autoexec.ipxe" <<EOF
 #!ipxe
 isset \${boot_domain} || set boot_domain ${BOOT_DOMAIN_VALUE}
-dhcp ||
-chain --autofree tftp://\${next-server}/menu.ipxe || chain --autofree http://\${boot_domain}/menu.ipxe || goto err
+chain --autofree http://\${boot_domain}/menu.ipxe || goto err
 exit 0
 :err
-echo Failed to load menu.ipxe
+echo Failed to load http://\${boot_domain}/menu.ipxe
 prompt
 EOF
 cp -a "${TFTP_ROOT}/autoexec.ipxe" "${TFTP_ROOT}/remote/autoexec.ipxe" 2>/dev/null || true
@@ -97,11 +98,12 @@ chown -R "${PUID}:${PGID}" /config /assets /var/lib/nginx /var/log/nginx /run/ng
 echo "[entrypoint] TFTP root bootloaders:"
 ls -la "${TFTP_ROOT}"/netboot.xyz* 2>/dev/null || echo "[entrypoint] WARNING: no netboot.xyz* bootloaders at TFTP root"
 
-echo "[entrypoint] starting dnsmasq TFTP on UDP/69 (root=${TFTP_ROOT})"
+echo "[entrypoint] starting dnsmasq TFTP on UDP/69 (root=${TFTP_ROOT}, single-port)"
 dnsmasq \
   --port=0 \
   --keep-in-foreground \
   --enable-tftp \
+  --tftp-single-port \
   --tftp-root="${TFTP_ROOT}" \
   --user=nbxyz \
   --group=nbxyz \
