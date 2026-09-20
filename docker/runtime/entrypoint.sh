@@ -73,10 +73,11 @@ echo "[entrypoint] writing autoexec.ipxe -> ${BOOT_DOMAIN_VALUE}"
 cat > "${TFTP_ROOT}/autoexec.ipxe" <<EOF
 #!ipxe
 isset \${boot_domain} || set boot_domain ${BOOT_DOMAIN_VALUE}
-chain --autofree http://\${boot_domain}/menu.ipxe || goto err
+isset \${next-server} || set next-server ${BOOT_DOMAIN_VALUE%%:*}
+chain --autofree tftp://\${next-server}/menu.ipxe || chain --autofree http://\${boot_domain}/menu.ipxe || goto err
 exit 0
 :err
-echo Failed to load http://\${boot_domain}/menu.ipxe
+echo Failed to load menu.ipxe via TFTP/HTTP
 prompt
 EOF
 cp -a "${TFTP_ROOT}/autoexec.ipxe" "${TFTP_ROOT}/remote/autoexec.ipxe" 2>/dev/null || true
