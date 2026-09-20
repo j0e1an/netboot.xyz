@@ -57,13 +57,28 @@ if [[ -d "${SRC}/ipxe" ]]; then
 fi
 
 # Optional runtime override for HTTP menu/asset host (does not recompile iPXE)
-if [[ -n "${BOOT_DOMAIN:-}" && -f "${TFTP_ROOT}/boot.cfg" ]]; then
-  echo "[entrypoint] setting boot_domain to ${BOOT_DOMAIN} in boot.cfg"
-  sed -i -E "s|^(set boot_domain ).*$|\1${BOOT_DOMAIN}|" "${TFTP_ROOT}/boot.cfg"
+BOOT_DOMAIN_VALUE="${BOOT_DOMAIN:-192.168.1.50:8080}"
+if [[ -f "${TFTP_ROOT}/boot.cfg" ]]; then
+  echo "[entrypoint] setting boot_domain to ${BOOT_DOMAIN_VALUE} in boot.cfg"
+  sed -i -E "s|^(set boot_domain ).*$|\1${BOOT_DOMAIN_VALUE}|" "${TFTP_ROOT}/boot.cfg"
   if [[ -f "${TFTP_ROOT}/remote/boot.cfg" ]]; then
-    sed -i -E "s|^(set boot_domain ).*$|\1${BOOT_DOMAIN}|" "${TFTP_ROOT}/remote/boot.cfg"
+    sed -i -E "s|^(set boot_domain ).*$|\1${BOOT_DOMAIN_VALUE}|" "${TFTP_ROOT}/remote/boot.cfg"
   fi
 fi
+
+# iPXE EFI always requests autoexec.ipxe beside the NBP
+echo "[entrypoint] writing autoexec.ipxe -> ${BOOT_DOMAIN_VALUE}"
+cat > "${TFTP_ROOT}/autoexec.ipxe" <<EOF
+#!ipxe
+isset \${boot_domain} || set boot_domain ${BOOT_DOMAIN_VALUE}
+dhcp ||
+chain --autofree tftp://\${next-server}/menu.ipxe || chain --autofree http://\${boot_domain}/menu.ipxe || goto err
+exit 0
+:err
+echo Failed to load menu.ipxe
+prompt
+EOF
+cp -a "${TFTP_ROOT}/autoexec.ipxe" "${TFTP_ROOT}/remote/autoexec.ipxe" 2>/dev/null || true
 
 # Preserve local overrides on top of remote defaults
 if [[ -d "${TFTP_ROOT}/local" ]]; then
